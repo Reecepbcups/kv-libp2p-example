@@ -8,6 +8,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	peerstore "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
@@ -15,6 +16,8 @@ import (
 type Server struct {
 	Node        host.Host
 	PingService *ping.PingService
+
+	Store *Store // TODO: create a service for which we can set & get off this value on the main server instance
 }
 
 func NewServer() *Server {
@@ -24,11 +27,14 @@ func NewServer() *Server {
 	ps := &ping.PingService{
 		Host: node,
 	}
-	node.SetStreamHandler(ping.ID, ps.PingHandler)
+	node.SetStreamHandler(ping.ID, func(s network.Stream) {
+		go ps.PingHandler(s)
+	})
 
 	return &Server{
 		Node:        node,
 		PingService: ps,
+		Store:       NewStore(),
 	}
 }
 
