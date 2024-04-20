@@ -27,7 +27,13 @@ func main() {
 	// age, _ := table.Get("age")
 	// fmt.Println(age)
 
-	s := NewServer()
+	store := NewStore()
+
+	// set some testing values for now
+	table := store.Table("users")
+	table.Set("name", "John")
+
+	s := NewServer(store)
 
 	if clientCommand(s) {
 		// client only command line stuff, no server here with arg
@@ -50,10 +56,10 @@ func clientCommand(s *Server) bool {
 		return false
 	}
 
-	fmt.Println("Command line arguments:")
-	for i, arg := range os.Args {
-		fmt.Printf("arg %d: %s\n", i, arg)
-	}
+	// fmt.Println("Command line arguments:")
+	// for i, arg := range os.Args {
+	// 	fmt.Printf("arg %d: %s\n", i, arg)
+	// }
 
 	addr, err := multiaddr.NewMultiaddr(os.Args[1])
 	if err != nil {
@@ -67,13 +73,20 @@ func clientCommand(s *Server) bool {
 	if err := s.Node.Connect(context.Background(), *peer); err != nil {
 		panic(err)
 	}
-	fmt.Println("sending 5 ping messages to", addr)
+	fmt.Println("sending req to", addr)
 
-	ch := s.PingService.Ping(context.Background(), peer.ID)
-	for i := 0; i < 5; i++ {
-		res := <-ch
-		fmt.Println("got ping response!", "RTT:", res.RTT)
-	}
+	// ch := s.PingService.Ping(context.Background(), peer.ID)
+	// for i := 0; i < 5; i++ {
+	// 	res := <-ch
+	// 	fmt.Println("got ping response!", "RTT:", res.RTT)
+	// }
+
+	table := os.Args[1]
+	key := os.Args[2]
+
+	ch := s.RedisService.RedisExec(context.Background(), table, key, peer.ID)
+	res := <-ch
+	fmt.Println("got redis response!", "Resp:", res.Resp)
 
 	return true
 }

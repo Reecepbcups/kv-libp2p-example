@@ -23,7 +23,7 @@ func (s *Store) Table(name string) KVPairs {
 	return table
 }
 
-func (kv KVPairs) Get(key string) (any, bool) {
+func (kv KVPairs) Get(key string) (string, bool) {
 	value, ok := kv[key]
 	return value, ok
 }

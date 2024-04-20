@@ -14,27 +14,33 @@ import (
 )
 
 type Server struct {
-	Node        host.Host
-	PingService *ping.PingService
+	Node         host.Host
+	PingService  *ping.PingService
+	RedisService *RedisService
 
 	Store *Store // TODO: create a service for which we can set & get off this value on the main server instance
 }
 
-func NewServer() *Server {
+func NewServer(s *Store) *Server {
 	node := NewNode()
 
 	// override the default ping service
 	ps := &ping.PingService{
 		Host: node,
 	}
+
+	rs := NewRedisService(node, s)
+
 	node.SetStreamHandler(ping.ID, func(s network.Stream) {
-		go ps.PingHandler(s)
+		// go ps.PingHandler(s) // TODO:
+		go rs.RedisHandler(s)
 	})
 
 	return &Server{
-		Node:        node,
-		PingService: ps,
-		Store:       NewStore(),
+		Node:         node,
+		PingService:  ps,
+		RedisService: rs,
+		Store:        s,
 	}
 }
 
