@@ -69,33 +69,35 @@ func redisCmd() *cobra.Command {
 				panic(err)
 			}
 
-			// store := redis.NewStore("client")
+			table := args[0]
+			key := args[1]
+			reqCmd := fmt.Sprintf("get;%s;%s", table, key)
 
-			// n := redis.NewServer(store) // is this required for local instances? Should not be since qwe request upstream
+			p := getPeer(peerAddr)
+			redis.RunClientNode(*p, reqCmd)
 
-			// p := getPeer(peerAddr)
-			// if err := n.Node.Connect(context.Background(), *p); err != nil {
-			// 	panic(err)
-			// }
-			// fmt.Println("sending req to", peerAddr)
+		},
+	})
 
-			// ctx, cancel := context.WithCancel(context.Background())
-			// defer cancel()
+	redisCmd.AddCommand(&cobra.Command{
+		Use:     "set",
+		Short:   "set a value from the redis store",
+		Example: `redis set table key value -p /ip4/127.0.0.1/tcp/38733/p2p/12D3KooWGEeb4NYtpFwhc7WxQuPGzTf3RvyXKspSMyCrkb5THBzS`,
+		Args:    cobra.ExactArgs(3),
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("get command")
+			// node := redis.NewNode()
 
-			// fmt.Println("sending request to peer before exec")
+			// get peer address from flag
+			peerAddr, err := cmd.Flags().GetString(FlagPeerAddress)
+			if err != nil {
+				panic(err)
+			}
 
-			// respch := n.RedisService.RedisExec(ctx, "users", "name", p.ID)
-			// res := <-respch
-			// fmt.Println("Redis Server Response:", res)
-
-			// run a mock server just to connect to the other?
-			// s := redis.RunTargetNode()\
-
-			// peerstore.AddrInfo
-
-			// convert peerAddr (/ip4/127.0.0.1/tcp/38733/p2p/12D3KooWGEeb4NYtpFwhc7WxQuPGzTf3RvyXKspSMyCrkb5THBzS) into a peer.AddrInfo
-
-			reqCmd := "get;users;name"
+			table := args[0]
+			key := args[1]
+			value := args[2]
+			reqCmd := fmt.Sprintf("set;%s;%s,%s", table, key, value)
 
 			p := getPeer(peerAddr)
 			redis.RunClientNode(*p, reqCmd)

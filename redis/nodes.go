@@ -27,6 +27,7 @@ func CreateNode() host.Host {
 }
 
 func HandleMsg(msg string, store *Store) string {
+	// TODO: add protocol version here? (smart but not necessary for example demo)
 	// formats:
 	// 1: set;table;key,value
 	// 2: get;table;key
@@ -40,13 +41,17 @@ func HandleMsg(msg string, store *Store) string {
 	table := args[1]
 
 	switch action {
-	// case "set":
+	case "set":
+		tuple := strings.Split(args[2], ",")
+		key, value := tuple[0], tuple[1]
+
+		store.Table(table).Set(key, value)
+		return "OK"
 	case "get":
 		key := args[2]
 		res, ok := store.Table(table).Get(key)
 		if !ok {
-			fmt.Printf("Key '%s' not found in table '%s'\n", key, table)
-			return ""
+			return fmt.Sprintf("Key '%s' not found in table '%s'", key, table)
 		}
 		return res
 	default:
@@ -84,7 +89,6 @@ func ReadHelloProtocol(s network.Stream, store *Store) (network.Stream, error) {
 	return s, nil
 }
 
-// Targert = server
 func RunServerNode(store *Store) peerstore.AddrInfo {
 	fmt.Printf("Creating target node...")
 	targetNode := CreateNode()
@@ -117,7 +121,6 @@ func PrintNodeInfo(node host.Host) {
 func RunClientNode(targetNodeInfo peerstore.AddrInfo, cmd string) {
 	fmt.Printf("Creating source node...")
 	sourceNode := CreateNode()
-	// fmt.Printf("Source node created with ID '%s'", sourceNode.ID().String())
 
 	sourceNode.Connect(context.Background(), targetNodeInfo)
 
@@ -131,7 +134,6 @@ func RunClientNode(targetNodeInfo peerstore.AddrInfo, cmd string) {
 		cmd += "\n"
 	}
 
-	// message := "Hello from Launchpad!\n"
 	fmt.Printf("Sending message...\n")
 	_, err = stream.Write([]byte(cmd))
 	if err != nil {
