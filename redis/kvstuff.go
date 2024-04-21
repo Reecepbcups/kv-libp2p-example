@@ -41,7 +41,6 @@ func (kv KVPairs) Keys() []string {
 	return keys
 }
 
-// values
 func (kv KVPairs) Values() []string {
 	values := make([]string, 0, len(kv))
 	for _, v := range kv {
@@ -63,7 +62,6 @@ func (kv KVPairs) Set(key string, value string) {
 	kv[key] = value
 }
 
-// String format for KVPairs
 func (kv KVPairs) String() string {
 	jsonStr, err := json.Marshal(kv)
 	if err != nil {

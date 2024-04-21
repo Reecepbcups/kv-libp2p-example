@@ -112,6 +112,19 @@ func redisCmd() *cobra.Command {
 	})
 
 	redisCmd.AddCommand(&cobra.Command{
+		Use:     "values",
+		Example: `redis values table -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			table := args[0]
+			reqCmd := fmt.Sprintf("values;%s", table)
+
+			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+
+		},
+	})
+
+	redisCmd.AddCommand(&cobra.Command{
 		Use:     "all",
 		Example: `redis all -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(0),

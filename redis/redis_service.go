@@ -87,7 +87,6 @@ func RunClientNode(targetNodeInfo peerstore.AddrInfo, cmd string) {
 
 	sourceNode.Connect(context.Background(), targetNodeInfo)
 
-	// TO BE IMPLEMENTED: Open stream and send message
 	stream, err := sourceNode.NewStream(context.Background(), targetNodeInfo.ID, Protocol)
 	if err != nil {
 		panic(err)

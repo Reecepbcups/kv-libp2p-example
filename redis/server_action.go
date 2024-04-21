@@ -33,7 +33,6 @@ func HandleMsg(msg string, store *Store) []byte {
 		key, value := tuple[0], tuple[1]
 
 		store.Table(table).Set(key, value)
-		// return "OK"
 		return []byte(`{"status":"OK"}`)
 	case "get":
 		key := args[2]
@@ -41,15 +40,15 @@ func HandleMsg(msg string, store *Store) []byte {
 		if !ok {
 			return []byte(fmt.Sprintf(`{"error":"Key '%s' not found in table '%s'"}`, key, table))
 		}
-		return []byte(fmt.Sprintf(`{"%s":"%s"}`, key, res))
+		return []byte(fmt.Sprintf(`{"result":"%s","key":"%s"}`, res, key))
 	case "keys":
 		keys := store.Table(table).Keys()
-		return []byte(fmt.Sprintf(`{"keys":%v}`, keys))
+		return []byte(fmt.Sprintf(`{"result":["%s"]}`, strings.Join(keys, `", "`)))
 	case "values":
 		values := store.Table(table).Values()
-		return []byte(fmt.Sprintf(`{"values":%v}`, values))
+		return []byte(fmt.Sprintf(`{"result":["%s"]}`, strings.Join(values, `", "`)))
 	case "all":
-		return []byte(fmt.Sprintf(`{"all":%v}`, store.tables.String()))
+		return []byte(fmt.Sprintf(`{"result":%s}`, store.tables.String()))
 	case "delete":
 		key := args[2]
 		store.Table(table).Delete(key)

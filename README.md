@@ -20,6 +20,7 @@ sh build.sh -p $NODE redis set users other AnotherName
 sh build.sh -p $NODE redis set table2 userId 1
 
 sh build.sh -p $NODE redis keys users
+sh build.sh -p $NODE redis values users
 
 sh build.sh -p $NODE redis all
 sh build.sh -p $NODE redis del users name
