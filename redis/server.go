@@ -1,4 +1,4 @@
-package main
+package redis
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ func NewServer(s *Store) *Server {
 
 	node.SetStreamHandler(ping.ID, func(s network.Stream) {
 		// go ps.PingHandler(s) // TODO:
-		go rs.RedisHandler(s)
+		rs.RedisHandler(s)
 	})
 
 	return &Server{

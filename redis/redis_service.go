@@ -1,9 +1,8 @@
-package main
+package redis
 
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -65,7 +64,7 @@ func redisError(err error) chan Result {
 }
 
 func RedisExecute(ctx context.Context, h host.Host, store *Store, table, key string, p peer.ID) <-chan Result {
-	s, err := h.NewStream(network.WithUseTransient(ctx, "ping"), p, ID)
+	s, err := h.NewStream(network.WithUseTransient(ctx, "redis"), p, ID)
 	if err != nil {
 		return redisError(err)
 	}
@@ -114,9 +113,13 @@ func RedisExecute(ctx context.Context, h host.Host, store *Store, table, key str
 }
 
 func redis(s network.Stream, rstore *Store, table, key string) (string, error) {
+	if rstore == nil {
+		return "", fmt.Errorf("no store provided, is nil. %s", rstore.DBName())
+	}
+
 	value, ok := rstore.Table(table).Get(key)
 	if !ok {
-		return "", errors.New(fmt.Sprintf("key %s not found in table %s", key, table))
+		return "", fmt.Errorf("(%s): key '%s' not found in table '%s'", rstore.DBName(), key, table)
 	}
 
 	size := bytes.NewBufferString(value).Len()
