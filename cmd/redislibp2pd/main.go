@@ -95,8 +95,10 @@ func redisCmd() *cobra.Command {
 
 			// convert peerAddr (/ip4/127.0.0.1/tcp/38733/p2p/12D3KooWGEeb4NYtpFwhc7WxQuPGzTf3RvyXKspSMyCrkb5THBzS) into a peer.AddrInfo
 
+			reqCmd := "get;users;name"
+
 			p := getPeer(peerAddr)
-			redis.RunSourceNode(*p)
+			redis.RunClientNode(*p, reqCmd)
 
 		},
 	})
@@ -130,7 +132,7 @@ func startServer() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			redis.RunTargetNode()
+			redis.RunServerNode(store)
 			// redis.RunSourceNode(info)
 
 			<-ctx.Done()

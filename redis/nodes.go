@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -25,8 +26,37 @@ func CreateNode() host.Host {
 	return node
 }
 
-func ReadHelloProtocol(s network.Stream) (network.Stream, error) {
-	// TO BE IMPLEMENTED: Read the stream and print its content
+func HandleMsg(msg string, store *Store) string {
+	// formats:
+	// 1: set;table;key,value
+	// 2: get;table;key
+
+	msg = strings.TrimSuffix(msg, "\n")
+
+	args := strings.Split(msg, ";")
+	fmt.Println(args)
+
+	action := args[0]
+	table := args[1]
+
+	switch action {
+	// case "set":
+	case "get":
+		key := args[2]
+		res, ok := store.Table(table).Get(key)
+		if !ok {
+			fmt.Printf("Key '%s' not found in table '%s'\n", key, table)
+			return ""
+		}
+		return res
+	default:
+		fmt.Println("Invalid message format")
+	}
+
+	return ""
+}
+
+func ReadHelloProtocol(s network.Stream, store *Store) (network.Stream, error) {
 	buf := bufio.NewReader(s)
 	message, err := buf.ReadString('\n')
 	if err != nil {
@@ -37,31 +67,32 @@ func ReadHelloProtocol(s network.Stream) (network.Stream, error) {
 
 	fmt.Printf("-> Message from '%s': %s", connection.RemotePeer().String(), message)
 
+	res := HandleMsg(message, store)
+
 	// write data to the stream for the return back
-	_, err = s.Write([]byte("Hello from the other side!\n"))
+	_, err = s.Write([]byte(res + "\n"))
 	if err != nil {
 		return s, err
 	}
-	// pad the rest of the buffer with 0s
+
+	// pad the rest of the buffer with 0s (TODO: do this before the newline?)
 	_, err = s.Write(make([]byte, PacketSize-len(message)))
 	if err != nil {
 		return s, err
 	}
 
-	// return nil
 	return s, nil
 }
 
 // Targert = server
-func RunTargetNode() peerstore.AddrInfo {
+func RunServerNode(store *Store) peerstore.AddrInfo {
 	fmt.Printf("Creating target node...")
 	targetNode := CreateNode()
 	PrintNodeInfo(targetNode)
 
-	// TO BE IMPLEMENTED: Set stream handler for the "/hello/1.0.0" protocol
 	targetNode.SetStreamHandler(Protocol, func(s network.Stream) {
 		fmt.Printf(Protocol + " stream created!\n")
-		if _, err := ReadHelloProtocol(s); err != nil {
+		if _, err := ReadHelloProtocol(s, store); err != nil {
 			s.Reset()
 		} else {
 			s.Close()
@@ -83,7 +114,7 @@ func PrintNodeInfo(node host.Host) {
 	fmt.Println("libp2p node address:", addrs[0])
 }
 
-func RunSourceNode(targetNodeInfo peerstore.AddrInfo) {
+func RunClientNode(targetNodeInfo peerstore.AddrInfo, cmd string) {
 	fmt.Printf("Creating source node...")
 	sourceNode := CreateNode()
 	// fmt.Printf("Source node created with ID '%s'", sourceNode.ID().String())
@@ -96,44 +127,24 @@ func RunSourceNode(targetNodeInfo peerstore.AddrInfo) {
 		panic(err)
 	}
 
-	message := "Hello from Launchpad!\n"
+	if !strings.HasSuffix(cmd, "\n") {
+		cmd += "\n"
+	}
+
+	// message := "Hello from Launchpad!\n"
 	fmt.Printf("Sending message...\n")
-	_, err = stream.Write([]byte(message))
+	_, err = stream.Write([]byte(cmd))
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Message sent to '%s': %s\n", targetNodeInfo.ID.String(), message)
-
-	// resp := make(chan string)
-
-	// wg := &sync.WaitGroup{}
-	// wg.Add(1)
-	// go func() {
-	// 	defer close(resp)
-
-	// 	fmt.Println("Reading response...")
-	// 	fmt.Println("Response:", <-resp)
-
-	// 	stream.Close()
-	// }()
-
-	newS, err := ReadHelloProtocol(stream)
-	if err != nil {
-		stream.Reset()
-	}
-	// wg.Wait()
+	fmt.Printf("Message sent to '%s': %s\n", targetNodeInfo.ID.String(), cmd)
 
 	response := make([]byte, PacketSize)
-	n, err := newS.Read(response)
+	n, err := stream.Read(response)
+	// we can ignore padding if we just throw out panic: EOF replies
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("Response from '%s': %s\n", targetNodeInfo.ID.String(), response[:n])
-
-	// if err = ReadHelloProtocol(stream, resp); err != nil {
-	// 	stream.Reset()
-	// }
-
-	// stream.Close()
 }
