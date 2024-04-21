@@ -49,11 +49,7 @@ func HandleMsg(msg string, store *Store) []byte {
 		values := store.Table(table).Values()
 		return []byte(fmt.Sprintf(`{"values":%v}`, values))
 	case "all":
-		all := make(map[string]KVPairs)
-		for k, v := range store.tables {
-			all[k] = v
-		}
-		return []byte(fmt.Sprintf(`{"all":%v}`, all))
+		return []byte(fmt.Sprintf(`{"all":%v}`, store.tables.String()))
 	case "delete":
 		key := args[2]
 		store.Table(table).Delete(key)

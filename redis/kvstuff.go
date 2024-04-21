@@ -1,18 +1,21 @@
 package redis
 
+import "encoding/json"
+
 // create a kvstore which has tables (keys in the map) and key value pairs within that table
 
 type KVPairs map[string]string
+type DBTable map[string]KVPairs
 
 type Store struct {
 	dbName string
-	tables map[string]KVPairs
+	tables DBTable
 }
 
 func NewStore(name string) *Store {
 	return &Store{
 		dbName: name,
-		tables: make(map[string]KVPairs),
+		tables: make(DBTable),
 	}
 }
 
@@ -58,4 +61,24 @@ func (kv KVPairs) Get(key string) (string, bool) {
 
 func (kv KVPairs) Set(key string, value string) {
 	kv[key] = value
+}
+
+// String format for KVPairs
+func (kv KVPairs) String() string {
+	jsonStr, err := json.Marshal(kv)
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(jsonStr)
+}
+
+// String on DBTable
+func (db DBTable) String() string {
+	jsonStr, err := json.Marshal(db)
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(jsonStr)
 }
