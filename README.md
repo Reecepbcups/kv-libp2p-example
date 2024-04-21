@@ -1,13 +1,12 @@
-# Redis libp2p
+# KV libp2p Example
 
-Goal: Build a mock redis (client and server) using libp2p
+A mock Key-Value client and server using libp2p (like redis).
 
 Why:
-- Ideally learn channels better
-- Build a proper client x server in go (only done in Python)
-- Learn libp2p for Gordian
+- Learn [LibP2P](https://libp2p.io/) for [Gordian](https://github.com/rollchains/gordian)
+- Build a proper Client x Server in Go (only done in Python)
 
-
+Manual Testing:
 ```
 sh build.sh start
 
