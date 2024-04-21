@@ -30,6 +30,27 @@ func (s *Store) Table(name string) KVPairs {
 	return table
 }
 
+func (kv KVPairs) Keys() []string {
+	keys := make([]string, 0, len(kv))
+	for k := range kv {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// values
+func (kv KVPairs) Values() []string {
+	values := make([]string, 0, len(kv))
+	for _, v := range kv {
+		values = append(values, v)
+	}
+	return values
+}
+
+func (kv KVPairs) Delete(key string) {
+	delete(kv, key)
+}
+
 func (kv KVPairs) Get(key string) (string, bool) {
 	value, ok := kv[key]
 	return value, ok

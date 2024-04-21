@@ -1,146 +1,117 @@
 package redis
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"fmt"
-	"io"
+	"strings"
 
-	logging "github.com/ipfs/go-log/v2"
-	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
+	peerstore "github.com/libp2p/go-libp2p/core/peer"
 )
-
-var log = logging.Logger("redis")
 
 const (
-	// reqTimeout = time.Second * 60
-
-	ID = "/redis/1.0.0"
-
-	ServiceName = "libp2p.redis"
+	Protocol   = "/redis/1.0.0"
+	PacketSize = 1024
 )
 
-type RedisService struct {
-	Host       host.Host
-	RedisStore *Store
-}
-
-func NewRedisService(h host.Host, r *Store) *RedisService {
-	rs := &RedisService{
-		Host:       h,
-		RedisStore: r,
-	}
-	h.SetStreamHandler(ID, rs.RedisHandler)
-	return rs
-}
-
-func (p *RedisService) RedisHandler(s network.Stream) {
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Debugf("error attaching stream to ping service: %s", err)
-		s.Reset()
-	}
-
-	fmt.Println("Stream details:", s)
-}
-
-// Client side
-type Result struct {
-	Resp  any
-	Error error
-}
-
-func (rs *RedisService) RedisExec(ctx context.Context, table, key string, p peer.ID) <-chan Result {
-	return RedisExecute(ctx, rs.Host, rs.RedisStore, table, key, p)
-}
-
-func redisError(err error) chan Result {
-	ch := make(chan Result, 1)
-	ch <- Result{Error: err}
-	close(ch)
-	return ch
-}
-
-func RedisExecute(ctx context.Context, h host.Host, store *Store, table, key string, p peer.ID) <-chan Result {
-	s, err := h.NewStream(network.WithUseTransient(ctx, "redis"), p, ID)
+func CreateNode() host.Host {
+	node, err := libp2p.New()
 	if err != nil {
-		return redisError(err)
+		panic(err)
 	}
 
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Debugf("error attaching stream to ping service: %s", err)
-		s.Reset()
-		return redisError(err)
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-
-	out := make(chan Result)
-	go func() {
-		defer close(out)
-		defer cancel()
-
-		for ctx.Err() == nil {
-			var res Result
-			res.Resp, res.Error = redis(s, store, table, key)
-
-			// canceled, ignore everything.
-			if ctx.Err() != nil {
-				return
-			}
-
-			// No error, record the RTT.
-			// if res.Error == nil {
-			// 	h.Peerstore().RecordLatency(p, res.Resp)
-			// }
-
-			select {
-			case out <- res:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-	go func() {
-		// forces the ping to abort.
-		<-ctx.Done()
-		s.Reset()
-	}()
-
-	return out
+	return node
 }
 
-func redis(s network.Stream, rstore *Store, table, key string) (string, error) {
-	if rstore == nil {
-		return "", fmt.Errorf("no store provided, is nil. %s", rstore.DBName())
+func ReadHelloProtocol(s network.Stream, store *Store) (network.Stream, error) {
+	buf := bufio.NewReader(s)
+	message, err := buf.ReadString('\n')
+	if err != nil {
+		return s, err
 	}
 
-	value, ok := rstore.Table(table).Get(key)
-	if !ok {
-		return "", fmt.Errorf("(%s): key '%s' not found in table '%s'", rstore.DBName(), key, table)
+	connection := s.Conn()
+
+	fmt.Printf("-> Message from '%s': %s", connection.RemotePeer().String(), message)
+
+	// write data to the stream for the return back
+	// if _, err = s.Write([]byte(res + "\n")); err != nil {
+	if _, err = s.Write(HandleMsg(message, store)); err != nil {
+		return s, err
 	}
 
-	size := bytes.NewBufferString(value).Len()
-
-	if err := s.Scope().ReserveMemory(2*size, network.ReservationPriorityAlways); err != nil {
-		log.Debugf("error reserving memory for ping stream: %s", err)
-		s.Reset()
-		return "", err
-	}
-	defer s.Scope().ReleaseMemory(2 * size) // idk if I need this?
-
-	buf := pool.Get(size)
-	defer pool.Put(buf)
-
-	if _, err := io.ReadFull(bytes.NewBufferString(value), buf); err != nil {
-		return "", err
+	// TODO: do this before the newline?
+	// pad the rest of the buffer with 0s
+	if _, err = s.Write(make([]byte, PacketSize-len(message))); err != nil {
+		return s, err
 	}
 
-	if _, err := s.Write(buf); err != nil {
-		return "", err
+	return s, nil
+}
+
+func RunServerNode(store *Store) peerstore.AddrInfo {
+	fmt.Printf("Creating server node...")
+	targetNode := CreateNode()
+	PrintNodeInfo(targetNode)
+
+	targetNode.SetStreamHandler(Protocol, func(s network.Stream) {
+		fmt.Printf(Protocol + " stream created!\n")
+		if _, err := ReadHelloProtocol(s, store); err != nil {
+			s.Reset()
+		} else {
+			s.Close()
+		}
+	})
+
+	return *host.InfoFromHost(targetNode)
+}
+
+func PrintNodeInfo(node host.Host) {
+	peerInfo := peerstore.AddrInfo{
+		ID:    node.ID(),
+		Addrs: node.Addrs(),
+	}
+	addrs, err := peerstore.AddrInfoToP2pAddrs(&peerInfo)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("\nlibp2p node address: NODE=%s\n", addrs[0])
+}
+
+func RunClientNode(targetNodeInfo peerstore.AddrInfo, cmd string) {
+	fmt.Println("Creating client node...")
+	sourceNode := CreateNode()
+
+	sourceNode.Connect(context.Background(), targetNodeInfo)
+
+	// TO BE IMPLEMENTED: Open stream and send message
+	stream, err := sourceNode.NewStream(context.Background(), targetNodeInfo.ID, Protocol)
+	if err != nil {
+		panic(err)
 	}
 
-	return value, nil
+	if !strings.HasSuffix(cmd, "\n") {
+		cmd += "\n"
+	}
+
+	fmt.Printf("Sending message...\n")
+	_, err = stream.Write([]byte(cmd))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Message sent to '%s': %s\n", targetNodeInfo.ID.String(), cmd)
+
+	response := make([]byte, PacketSize)
+	n, err := stream.Read(response)
+	if err != nil && err.Error() != "EOF" {
+		// EOF occurs if packet padding is not added
+		fmt.Printf("Error reading response: %s\n", err)
+		return
+	}
+
+	fmt.Printf("Response from '%s': %s\n", targetNodeInfo.ID.String(), response[:n])
 }
