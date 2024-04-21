@@ -1,4 +1,4 @@
-module github.com/reecepbcups/redis-libp2p
+module github.com/reecepbcups/kv-libp2p-example
 
 go 1.21.0
 

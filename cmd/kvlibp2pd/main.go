@@ -6,7 +6,7 @@ import (
 
 	peerstore "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/reecepbcups/redis-libp2p/redis"
+	"github.com/reecepbcups/kv-libp2p-example/kv"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,7 @@ func myCobraCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(startServer())
-	cmd.AddCommand(redisCmd())
+	cmd.AddCommand(kvStoreCmd())
 
 	return cmd
 }
@@ -34,43 +34,43 @@ func myCobraCmd() *cobra.Command {
 func startServer() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "start the redis server",
+		Short: "start the KV server",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			store := redis.NewStore("server")
-			redis.RunServerNode(store)
+			store := kv.NewStore("server")
+			kv.RunServerNode(store)
 
 			<-ctx.Done()
 		},
 	}
 }
 
-func redisCmd() *cobra.Command {
-	redisCmd := &cobra.Command{
-		Use:   "redis",
-		Short: "redis commands",
+func kvStoreCmd() *cobra.Command {
+	kvCmd := &cobra.Command{
+		Use:     "kv",
+		Aliases: []string{"redis", "keyvalue", "key-value", "kvstore"},
 	}
-	redisCmd.PersistentFlags().StringP(FlagPeerAddress, "p", "", "peer address")
+	kvCmd.PersistentFlags().StringP(FlagPeerAddress, "p", "", "peer address")
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "get",
-		Example: `redis get users name -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv get users name -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			table := args[0]
 			key := args[1]
 			reqCmd := fmt.Sprintf("get;%s;%s", table, key)
 
-			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+			kv.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
 
 		},
 	})
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "set",
-		Example: `redis set table key value -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv set table key value -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
 			table := args[0]
@@ -78,63 +78,63 @@ func redisCmd() *cobra.Command {
 			value := args[2]
 			reqCmd := fmt.Sprintf("set;%s;%s,%s", table, key, value)
 
-			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+			kv.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
 
 		},
 	})
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "del",
 		Aliases: []string{"delete"},
-		Example: `redis delete table key -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv delete table key -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			table := args[0]
 			key := args[1]
 			reqCmd := fmt.Sprintf("delete;%s;%s", table, key)
 
-			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+			kv.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
 
 		},
 	})
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "keys",
-		Example: `redis keys table -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv keys table -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			table := args[0]
 			reqCmd := fmt.Sprintf("keys;%s", table)
 
-			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+			kv.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
 
 		},
 	})
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "values",
-		Example: `redis values table -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv values table -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			table := args[0]
 			reqCmd := fmt.Sprintf("values;%s", table)
 
-			redis.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
+			kv.RunClientNode(*getPeerFromFlag(cmd), reqCmd)
 
 		},
 	})
 
-	redisCmd.AddCommand(&cobra.Command{
+	kvCmd.AddCommand(&cobra.Command{
 		Use:     "all",
-		Example: `redis all -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
+		Example: `kv all -p /ip4/127.0.0.1/tcp/38733/p2p/XXXXXXX`,
 		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			redis.RunClientNode(*getPeerFromFlag(cmd), "all")
+			kv.RunClientNode(*getPeerFromFlag(cmd), "all")
 
 		},
 	})
 
-	return redisCmd
+	return kvCmd
 }
 
 func getPeerFromFlag(cmd *cobra.Command) *peerstore.AddrInfo {

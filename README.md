@@ -12,15 +12,15 @@ sh build.sh start
 
 NODE=/ip4/127.0.0.1/tcp/43459/p2p/XXXXXXXXXXXXXXXXXXX
 
-sh build.sh -p $NODE redis set users name Reece
-sh build.sh -p $NODE redis get users name
+sh build.sh -p $NODE kv set users name Reece
+sh build.sh -p $NODE kv get users name
 
-sh build.sh -p $NODE redis set users other AnotherName
-sh build.sh -p $NODE redis set table2 userId 1
+sh build.sh -p $NODE kv set users other AnotherName
+sh build.sh -p $NODE kv set table2 userId 1
 
-sh build.sh -p $NODE redis keys users
-sh build.sh -p $NODE redis values users
+sh build.sh -p $NODE kv keys users
+sh build.sh -p $NODE kv values users
 
-sh build.sh -p $NODE redis all
-sh build.sh -p $NODE redis del users name
+sh build.sh -p $NODE kv all
+sh build.sh -p $NODE kv del users name
 ```

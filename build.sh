@@ -1,10 +1,12 @@
-go build -o bin/redislibp2pd ./cmd/redislibp2pd
+
+NAME=kvlibp2pd
+go build -o bin/$NAME ./cmd/$NAME
 
 
 # if arguments are supplied, call them
 if [ $# -gt 0 ]; then
-    ./bin/redislibp2pd $@
+    ./bin/$NAME $@
     exit
 fi
 
-./bin/redislibp2pd -h
+./bin/$NAME -h

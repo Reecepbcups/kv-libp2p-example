@@ -1,8 +1,6 @@
-package redis
+package kv
 
 import "encoding/json"
-
-// create a kvstore which has tables (keys in the map) and key value pairs within that table
 
 type KVPairs map[string]string
 type DBTable map[string]KVPairs

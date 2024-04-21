@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	Protocol   = "/redis/1.0.0"
+	Protocol   = "/kv-demo/1.0.0"
 	PacketSize = 1024
 )
 
@@ -26,7 +26,7 @@ func CreateNode() host.Host {
 	return node
 }
 
-func ReadHelloProtocol(s network.Stream, store *Store) (network.Stream, error) {
+func ReadKVProtocol(s network.Stream, store *Store) (network.Stream, error) {
 	buf := bufio.NewReader(s)
 	message, err := buf.ReadString('\n')
 	if err != nil {
@@ -59,7 +59,7 @@ func RunServerNode(store *Store) peerstore.AddrInfo {
 
 	targetNode.SetStreamHandler(Protocol, func(s network.Stream) {
 		fmt.Printf(Protocol + " stream created!\n")
-		if _, err := ReadHelloProtocol(s, store); err != nil {
+		if _, err := ReadKVProtocol(s, store); err != nil {
 			s.Reset()
 		} else {
 			s.Close()
