@@ -18,7 +18,7 @@ var log = logging.Logger("redis")
 const (
 	// reqTimeout = time.Second * 60
 
-	ID = "/ipfs/redis/1.0.0"
+	ID = "/redis/1.0.0"
 
 	ServiceName = "libp2p.redis"
 )

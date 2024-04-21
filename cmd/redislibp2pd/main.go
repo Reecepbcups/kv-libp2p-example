@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	peerstore "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -51,9 +50,6 @@ func redisCmd() *cobra.Command {
 	redisCmd := &cobra.Command{
 		Use:   "redis",
 		Short: "redis commands",
-		// Run: func(cmd *cobra.Command, args []string) {
-		// 	fmt.Println("redis command")
-		// },
 	}
 	redisCmd.PersistentFlags().StringP(FlagPeerAddress, "p", "", "peer address")
 
@@ -73,34 +69,35 @@ func redisCmd() *cobra.Command {
 				panic(err)
 			}
 
-			store := redis.NewStore("client")
+			// store := redis.NewStore("client")
 
-			n := redis.NewServer(store) // is this required for local instances? Should not be since qwe request upstream
+			// n := redis.NewServer(store) // is this required for local instances? Should not be since qwe request upstream
+
+			// p := getPeer(peerAddr)
+			// if err := n.Node.Connect(context.Background(), *p); err != nil {
+			// 	panic(err)
+			// }
+			// fmt.Println("sending req to", peerAddr)
+
+			// ctx, cancel := context.WithCancel(context.Background())
+			// defer cancel()
+
+			// fmt.Println("sending request to peer before exec")
+
+			// respch := n.RedisService.RedisExec(ctx, "users", "name", p.ID)
+			// res := <-respch
+			// fmt.Println("Redis Server Response:", res)
+
+			// run a mock server just to connect to the other?
+			// s := redis.RunTargetNode()\
+
+			// peerstore.AddrInfo
+
+			// convert peerAddr (/ip4/127.0.0.1/tcp/38733/p2p/12D3KooWGEeb4NYtpFwhc7WxQuPGzTf3RvyXKspSMyCrkb5THBzS) into a peer.AddrInfo
 
 			p := getPeer(peerAddr)
-			if err := n.Node.Connect(context.Background(), *p); err != nil {
-				panic(err)
-			}
-			fmt.Println("sending req to", peerAddr)
+			redis.RunSourceNode(*p)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			fmt.Println("sending request to peer before exec")
-
-			respch := n.RedisService.RedisExec(ctx, "users", "name", p.ID)
-			res := <-respch
-			fmt.Println("Redis Server Response:", res)
-
-		},
-	})
-
-	// set
-	redisCmd.AddCommand(&cobra.Command{
-		Use:   "set",
-		Short: "set a value in the redis store",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("set command")
 		},
 	})
 
@@ -118,17 +115,25 @@ func startServer() *cobra.Command {
 			table := store.Table("users")
 			table.Set("name", "John")
 
-			s := redis.NewServer(store)
+			// s := redis.NewServer(store)
 
-			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func(s *redis.Server) {
-				defer wg.Done()
-				s.Stop()
-			}(s)
+			// wg := &sync.WaitGroup{}
+			// wg.Add(1)
+			// go func(s *redis.Server) {
+			// 	defer wg.Done()
+			// 	s.Stop()
+			// }(s)
 
-			s.Start()
-			wg.Wait()
+			// s.Start()
+			// wg.Wait()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			redis.RunTargetNode()
+			// redis.RunSourceNode(info)
+
+			<-ctx.Done()
 		},
 	}
 }
