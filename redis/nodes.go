@@ -11,6 +11,8 @@ import (
 	peerstore "github.com/libp2p/go-libp2p/core/peer"
 )
 
+const Protocol = "/hello/1.0.0"
+
 func CreateNode() host.Host {
 	node, err := libp2p.New()
 	if err != nil {
@@ -30,7 +32,15 @@ func ReadHelloProtocol(s network.Stream) error {
 
 	connection := s.Conn()
 
-	fmt.Printf("Message from '%s': %s", connection.RemotePeer().String(), message)
+	fmt.Printf("-> Message from '%s': %s", connection.RemotePeer().String(), message)
+
+	// write data to the stream for the return back
+	_, err = s.Write([]byte("Hello from the other side!\n"))
+	if err != nil {
+		return err
+	}
+
+	// return nil
 	return nil
 }
 
@@ -41,10 +51,9 @@ func RunTargetNode() peerstore.AddrInfo {
 	PrintNodeInfo(targetNode)
 
 	// TO BE IMPLEMENTED: Set stream handler for the "/hello/1.0.0" protocol
-	targetNode.SetStreamHandler("/hello/1.0.0", func(s network.Stream) {
-		fmt.Printf("/hello/1.0.0 stream created")
-		err := ReadHelloProtocol(s)
-		if err != nil {
+	targetNode.SetStreamHandler(Protocol, func(s network.Stream) {
+		fmt.Printf(Protocol + " stream created!\n")
+		if err := ReadHelloProtocol(s); err != nil {
 			s.Reset()
 		} else {
 			s.Close()
@@ -74,25 +83,23 @@ func RunSourceNode(targetNodeInfo peerstore.AddrInfo) {
 	sourceNode.Connect(context.Background(), targetNodeInfo)
 
 	// TO BE IMPLEMENTED: Open stream and send message
-	stream, err := sourceNode.NewStream(context.Background(), targetNodeInfo.ID, "/hello/1.0.0")
+	stream, err := sourceNode.NewStream(context.Background(), targetNodeInfo.ID, Protocol)
 	if err != nil {
 		panic(err)
 	}
 
 	message := "Hello from Launchpad!\n"
-	fmt.Printf("Sending message...")
+	fmt.Printf("Sending message...\n")
 	_, err = stream.Write([]byte(message))
 	if err != nil {
 		panic(err)
 	}
 
-	// print resp
-	err = ReadHelloProtocol(stream)
-	if err != nil {
+	fmt.Printf("Message sent to '%s': %s\n", targetNodeInfo.ID.String(), message)
+
+	if err = ReadHelloProtocol(stream); err != nil {
 		stream.Reset()
-	} else {
-		stream.Close()
 	}
 
-	fmt.Printf("Message sent to '%s': %s", targetNodeInfo.ID.String(), message)
+	stream.Close()
 }
