@@ -11,7 +11,10 @@ import (
 	peerstore "github.com/libp2p/go-libp2p/core/peer"
 )
 
-const Protocol = "/hello/1.0.0"
+const (
+	Protocol   = "/hello/1.0.0"
+	PacketSize = 1024
+)
 
 func CreateNode() host.Host {
 	node, err := libp2p.New()
@@ -22,12 +25,12 @@ func CreateNode() host.Host {
 	return node
 }
 
-func ReadHelloProtocol(s network.Stream) error {
+func ReadHelloProtocol(s network.Stream) (network.Stream, error) {
 	// TO BE IMPLEMENTED: Read the stream and print its content
 	buf := bufio.NewReader(s)
 	message, err := buf.ReadString('\n')
 	if err != nil {
-		return err
+		return s, err
 	}
 
 	connection := s.Conn()
@@ -37,11 +40,16 @@ func ReadHelloProtocol(s network.Stream) error {
 	// write data to the stream for the return back
 	_, err = s.Write([]byte("Hello from the other side!\n"))
 	if err != nil {
-		return err
+		return s, err
+	}
+	// pad the rest of the buffer with 0s
+	_, err = s.Write(make([]byte, PacketSize-len(message)))
+	if err != nil {
+		return s, err
 	}
 
 	// return nil
-	return nil
+	return s, nil
 }
 
 // Targert = server
@@ -53,7 +61,7 @@ func RunTargetNode() peerstore.AddrInfo {
 	// TO BE IMPLEMENTED: Set stream handler for the "/hello/1.0.0" protocol
 	targetNode.SetStreamHandler(Protocol, func(s network.Stream) {
 		fmt.Printf(Protocol + " stream created!\n")
-		if err := ReadHelloProtocol(s); err != nil {
+		if _, err := ReadHelloProtocol(s); err != nil {
 			s.Reset()
 		} else {
 			s.Close()
@@ -97,9 +105,35 @@ func RunSourceNode(targetNodeInfo peerstore.AddrInfo) {
 
 	fmt.Printf("Message sent to '%s': %s\n", targetNodeInfo.ID.String(), message)
 
-	if err = ReadHelloProtocol(stream); err != nil {
+	// resp := make(chan string)
+
+	// wg := &sync.WaitGroup{}
+	// wg.Add(1)
+	// go func() {
+	// 	defer close(resp)
+
+	// 	fmt.Println("Reading response...")
+	// 	fmt.Println("Response:", <-resp)
+
+	// 	stream.Close()
+	// }()
+
+	newS, err := ReadHelloProtocol(stream)
+	if err != nil {
 		stream.Reset()
 	}
+	// wg.Wait()
 
-	stream.Close()
+	response := make([]byte, PacketSize)
+	n, err := newS.Read(response)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Response from '%s': %s\n", targetNodeInfo.ID.String(), response[:n])
+
+	// if err = ReadHelloProtocol(stream, resp); err != nil {
+	// 	stream.Reset()
+	// }
+
+	// stream.Close()
 }
